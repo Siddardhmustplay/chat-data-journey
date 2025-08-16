@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -6,6 +7,7 @@ import { BarChart3, TrendingUp, AlertTriangle } from "lucide-react";
 
 const Insights = () => {
   const [question, setQuestion] = useState("");
+  const navigate = useNavigate();
 
   const autoInsights = [
     {
@@ -36,9 +38,7 @@ const Insights = () => {
 
   const handleAskQuestion = () => {
     if (question.trim()) {
-      // Here you would integrate with ChatGPT API
-      console.log("Asking question:", question);
-      setQuestion("");
+      navigate('/chat');
     }
   };
 
