@@ -61,7 +61,15 @@ export default {
 					'accent-foreground': 'hsl(var(--sidebar-accent-foreground))',
 					border: 'hsl(var(--sidebar-border))',
 					ring: 'hsl(var(--sidebar-ring))'
-				}
+				},
+				// Financial Analytics Colors
+				'sidebar-bg': 'hsl(var(--sidebar-bg))',
+				'sidebar-text': 'hsl(var(--sidebar-text))',
+				'insight-blue': 'hsl(var(--insight-blue))',
+				'insight-purple': 'hsl(var(--insight-purple))',
+				'insight-orange': 'hsl(var(--insight-orange))',
+				'chat-user': 'hsl(var(--chat-user))',
+				'chat-bot': 'hsl(var(--chat-bot))'
 			},
 			borderRadius: {
 				lg: 'var(--radius)',
