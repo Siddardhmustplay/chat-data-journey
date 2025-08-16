@@ -4,12 +4,17 @@ import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Bot, User } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
+import { askQuestion } from "@/lib/api";
 
 interface Message {
   id: string;
   content: string;
   sender: "user" | "bot";
   timestamp: string;
+  sqlQuery?: string;
+  preview?: any;
+  chart?: string;
 }
 
 const Chat = () => {
@@ -28,29 +33,81 @@ const Chat = () => {
     }
   ]);
   const [newMessage, setNewMessage] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+  const { toast } = useToast();
 
-  const handleSendMessage = () => {
-    if (newMessage.trim()) {
-      const userMessage: Message = {
+  const handleSendMessage = async () => {
+    if (!newMessage.trim()) return;
+
+    const dbPath = localStorage.getItem('dbPath');
+    if (!dbPath) {
+      toast({
+        title: "No dataset found",
+        description: "Please upload a dataset first.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const userMessage: Message = {
+      id: Math.random().toString(),
+      content: newMessage,
+      sender: "user",
+      timestamp: new Date().toLocaleDateString('en-US', { 
+        weekday: 'long', 
+        hour: 'numeric', 
+        minute: '2-digit' 
+      })
+    };
+
+    setMessages(prev => [...prev, userMessage]);
+    const currentMessage = newMessage;
+    setNewMessage("");
+    setIsLoading(true);
+
+    try {
+      const data = await askQuestion(currentMessage, dbPath);
+      
+      if (data.error) {
+        throw new Error(data.error);
+      }
+
+      const botMessage: Message = {
         id: Math.random().toString(),
-        content: newMessage,
-        sender: "user",
-        timestamp: new Date().toLocaleString()
+        content: "Here's what I found based on your dataset:",
+        sender: "bot",
+        timestamp: new Date().toLocaleDateString('en-US', { 
+          weekday: 'long', 
+          hour: 'numeric', 
+          minute: '2-digit' 
+        }),
+        sqlQuery: data.sql_query,
+        preview: data.preview,
+        chart: data.chart
       };
+      
+      setMessages(prev => [...prev, botMessage]);
 
-      setMessages(prev => [...prev, userMessage]);
-      setNewMessage("");
-
-      // Simulate bot response
-      setTimeout(() => {
-        const botMessage: Message = {
-          id: Math.random().toString(),
-          content: "I'm processing your question about the financial data. Here's what I found based on your dataset...",
-          sender: "bot",
-          timestamp: new Date().toLocaleString()
-        };
-        setMessages(prev => [...prev, botMessage]);
-      }, 1000);
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to process your question",
+        variant: "destructive",
+      });
+      
+      const errorMessage: Message = {
+        id: Math.random().toString(),
+        content: "I'm sorry, I encountered an error processing your question. Please try again.",
+        sender: "bot",
+        timestamp: new Date().toLocaleDateString('en-US', { 
+          weekday: 'long', 
+          hour: 'numeric', 
+          minute: '2-digit' 
+        })
+      };
+      setMessages(prev => [...prev, errorMessage]);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -94,10 +151,59 @@ const Chat = () => {
                   <p className={message.sender === "user" ? "text-white" : "text-foreground"}>
                     {message.content}
                   </p>
+                  
+                  {/* Show SQL Query if available */}
+                  {message.sqlQuery && (
+                    <div className="mt-4 p-3 bg-secondary rounded-lg">
+                      <p className="text-sm font-semibold text-foreground mb-2">SQL Query:</p>
+                      <code className="text-xs text-muted-foreground">{message.sqlQuery}</code>
+                    </div>
+                  )}
+                  
+                  {/* Show Data Preview if available */}
+                  {message.preview && (
+                    <div className="mt-4 p-3 bg-secondary rounded-lg">
+                      <p className="text-sm font-semibold text-foreground mb-2">Data Preview:</p>
+                      <div className="text-xs text-muted-foreground overflow-auto">
+                        <pre>{JSON.stringify(message.preview, null, 2)}</pre>
+                      </div>
+                    </div>
+                  )}
+                  
+                  {/* Show Chart if available */}
+                  {message.chart && (
+                    <div className="mt-4">
+                      <img 
+                        src={`data:image/png;base64,${message.chart}`} 
+                        alt="Generated Chart"
+                        className="max-w-full h-auto rounded-lg"
+                      />
+                    </div>
+                  )}
                 </Card>
               </div>
             </div>
           ))}
+          
+          {isLoading && (
+            <div className="flex items-start space-x-3">
+              <Avatar className="w-8 h-8">
+                <AvatarFallback className="bg-chat-bot">
+                  <Bot className="w-4 h-4 text-foreground" />
+                </AvatarFallback>
+              </Avatar>
+              
+              <div className="max-w-2xl">
+                <div className="text-xs text-muted-foreground mb-1">
+                  Fin Genie · Processing...
+                </div>
+                
+                <Card className="p-4 bg-card">
+                  <p className="text-foreground">Processing your question...</p>
+                </Card>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Input */}
@@ -107,11 +213,15 @@ const Chat = () => {
               placeholder="Ask Anything"
               value={newMessage}
               onChange={(e) => setNewMessage(e.target.value)}
-              onKeyPress={(e) => e.key === "Enter" && handleSendMessage()}
+              onKeyPress={(e) => e.key === "Enter" && !isLoading && handleSendMessage()}
               className="flex-1"
+              disabled={isLoading}
             />
-            <Button onClick={handleSendMessage} disabled={!newMessage.trim()}>
-              Send
+            <Button 
+              onClick={handleSendMessage} 
+              disabled={!newMessage.trim() || isLoading}
+            >
+              {isLoading ? "Sending..." : "Send"}
             </Button>
           </div>
         </Card>

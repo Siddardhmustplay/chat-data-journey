@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { FolderOpen, Upload as UploadIcon } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { uploadFile } from "@/lib/api";
 
 const Upload = () => {
   const [dragActive, setDragActive] = useState(false);
@@ -37,7 +38,7 @@ const Upload = () => {
     }
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!file) {
       toast({
         title: "Please select a file",
@@ -47,15 +48,38 @@ const Upload = () => {
       return;
     }
 
-    toast({
-      title: "File uploaded successfully!",
-      description: "Processing your financial dataset...",
-    });
+    try {
+      toast({
+        title: "Uploading file...",
+        description: "Please wait while we process your dataset.",
+      });
 
-    // Simulate file processing and navigate to data preview
-    setTimeout(() => {
-      navigate("/data-preview");
-    }, 1000);
+      const data = await uploadFile(file);
+      
+      if (data.error) {
+        throw new Error(data.error);
+      }
+
+      // Store db_path in localStorage for later use
+      localStorage.setItem('dbPath', data.db_path);
+
+      toast({
+        title: "File uploaded successfully!",
+        description: "Processing your financial dataset...",
+      });
+
+      // Navigate to data preview
+      setTimeout(() => {
+        navigate("/data-preview");
+      }, 1000);
+
+    } catch (error) {
+      toast({
+        title: "Upload failed",
+        description: error instanceof Error ? error.message : "Failed to upload file",
+        variant: "destructive",
+      });
+    }
   };
 
   return (
